@@ -8,7 +8,7 @@ app.on('ready', () => {
 
   //MacOS tray icons, slightly different size (22x22 > 176x176)
   if(os.platform() == 'darwin') {
-    tray = new Tray(app.getAppPath() + '/img/tray-icon-mac.png')
+    tray = new Tray(app.getAppPath() + '/img/tray-icon-mac-Template.png')
   }
   //other icons, available in 32x32 > 256X256
   else {
