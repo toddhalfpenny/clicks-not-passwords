@@ -1,10 +1,19 @@
+var os = require('os');
 const electron = require('electron')
 const {app, Menu, MenuItem, Tray} = require('electron')
 const spawn = require('child_process').spawn;
 
 let tray = null
 app.on('ready', () => {
-  tray = new Tray(app.getAppPath() + '/img/tray-icon.png')
+
+  //MacOS tray icons, slightly different size (22x22 > 176x176)
+  if(os.platform() == 'darwin') {
+    tray = new Tray(app.getAppPath() + '/img/tray-icon-mac.png')
+  }
+  //other icons, available in 32x32 > 256X256
+  else {
+    tray = new Tray(app.getAppPath() + '/img/tray-icon.png')
+  }
   const contextMenu = new Menu();
 
   getOrgAliases().then(function(orgs){
