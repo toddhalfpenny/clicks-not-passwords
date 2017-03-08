@@ -1,0 +1,33 @@
+{
+  "name": "clicks-not-passwords",
+  "version": "0.0.1",
+  "description": "Salesforce Org Launcher",
+  "main": "main.js",
+  "scripts": {
+    "pack": "build --dir",
+    "dist": "build",
+    "start": "electron ."
+  },
+  "repository": "https://github.com/toddhalfpenny/clicks-not-passwords",
+  "keywords": [
+    "Electron",
+    "Salesforce",
+    "password"
+  ],
+  "author": "Todd Halfpenny <todd@toddhalfpenny.com>",
+  "license": "CC0-1.0",
+  "build": {
+    "appId": "com.toddhalfpenny.clicks-not-passwords",
+    "linux": {
+      "target": ["deb"],
+      "icon": "icon"
+    }
+  },
+  "devDependencies": {
+    "electron": "^1.4.1",
+    "electron-builder": "^15.1.1"
+  },
+  "dependencies": {
+    "shelljs": "^0.7.6"
+  }
+}
