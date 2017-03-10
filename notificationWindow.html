@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>Clicks not Passwords</title>
+<script type="text/javascript">
+  require('electron').ipcRenderer.on('notification', (event, message) => {
+    let myNotification = new Notification('Clicks not Passwords', {
+    	body: message,
+    	icon: `file://${__dirname}/img/tray-icon@1x.png`
+  	})
+  })
+</script>
+</head>
+</html>

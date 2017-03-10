@@ -32,7 +32,8 @@ npm run dist
 
 ## Roadmap
 
-- Refresh aliases list without restart
-- Alias management (addition, updating)
-- Error reporting
-- Toasts for notifications
+* Alias management (listing, addition, updating, hiding)
+* Error reporting ([Crash reporting to remote server](https://electron.atom.io/docs/api/crash-reporter/))
+* Settings
+  * Error reporting on/off
+  * Notifications on/off

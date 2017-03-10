@@ -1,3 +1,21 @@
+### 0.0.3
+
+
+#### Bug Fixes
+
+* NONE
+
+#### Features
+
+* Refresh aliases list without
+* Toasts for notifications
+
+#### Breaking Changes
+
+* NONE
+
+
+
 ### 0.0.2
 
 
