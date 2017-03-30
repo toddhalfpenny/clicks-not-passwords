@@ -2,3 +2,4 @@ node_modules
 dist
 
 nohup.out
+npm-debug.log
