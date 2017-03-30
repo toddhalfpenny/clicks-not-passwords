@@ -1,7 +1,8 @@
 {
   "name": "clicks-not-passwords",
-  "version": "0.0.2",
-  "description": "Salesforce Org Launcher",
+  "productName": "Clicks not Passwords",
+  "version": "0.0.3",
+  "description": "Clicks not Passwords - Salesforce Org Launcher",
   "main": "main.js",
   "scripts": {
     "pack": "build --dir",
@@ -20,7 +21,9 @@
     "appId": "com.toddhalfpenny.clicks-not-passwords",
     "linux": {
       "target": ["deb"],
-      "icon": "icon"
+      "icon": "icon",
+      "category": "Utility",
+      "executableName": "Clicks not Passwords"
     }
   },
   "devDependencies": {
