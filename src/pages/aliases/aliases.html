@@ -1,0 +1,19 @@
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle>
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>Clicks not Passwords</ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content padding>
+  <h3>Aliases</h3>
+
+  <ion-grid>
+	  <ion-row><ion-col col-3>Alias</ion-col><ion-col>Username</ion-col></ion-row>
+	  <ion-row *ngFor="let a of aliases">
+	    <ion-col col-3>{{ a.alias }}</ion-col><ion-col>{{ a.value }}</ion-col>
+	  </ion-row>
+	</ion-grid>
+</ion-content>

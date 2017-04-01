@@ -10,6 +10,8 @@ let tray = null
 let contextMenu = new Menu();
 let notifWin = null;
 
+let orgs = null
+
 app.on('ready', () => {
 
   // Our hidden notification window.
@@ -35,6 +37,18 @@ app.on('ready', () => {
   tray.setToolTip('Clicks not passwords.')
 
   refreshMenu()
+
+  ipcMain.on("aliases",function(err,arg){
+    console.log("Received message: "+arg);
+    switch (arg){
+      case 'fetch':
+        ipc_aliases_fetch();
+        break;
+      default:
+        managerWin.webContents.send("aliases","unknown command: " +arg);
+    }
+  })
+
 }) // end app.on('ready')
 
 
@@ -45,10 +59,25 @@ function showMenu(orgs){
   contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Refresh', click() { refreshMenu() }}));
   contextMenu.append(new MenuItem({type: 'separator'}));
+  contextMenu.append(new MenuItem({label: 'Manage', click() { launchManager() }}));
+  contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Quit', click() { app.quit() }}));
   tray.setContextMenu(contextMenu)
   // Show our notification via the hidden window
   notifWin.webContents.send('notification', 'Aliases refreshed')
+}
+
+
+function launchManager() {
+  console.log("launchManager");
+    // Our hidden notification window.
+    managerWin = new BrowserWindow({
+      useContentSize: true
+    })
+    // Note: ionicMode=wp is to make it look not like Material design - maybe
+    //  we want this, maybe we don't.
+    managerWin.loadURL(`file://${__dirname}/www/index.html?ionicMode=wp`)
+    managerWin.webContents.openDevTools();
 }
 
 
@@ -70,7 +99,8 @@ function getOrgAliases(){
   return new Promise((resolve, reject) => {
     var ret = spawn('sfdx', ['force:alias:list', '--json']);
     ret.stdout.on('data', (data) => {
-      resolve(JSON.parse(data).results.map(org => {
+      orgs = JSON.parse(data).results;
+      resolve(orgs.map(org => {
         return org.alias + " : " + org.value;
       }));
     });
@@ -90,4 +120,21 @@ function openOrg(org){
       console.error(`stderr: ${data}`);
       notifWin.webContents.send('notification', 'Oh dear, something went wrong :(\n' + data)
     });
+}
+
+
+function ipc_aliases_fetch(){
+  return new Promise((resolve, reject) => {
+    if (orgs) {
+      managerWin.webContents.send("aliases",orgs);
+    } else {
+      getOrgAliases().then(x => {
+        managerWin.webContents.send("aliases",orgs);
+      }).catch(e => {
+        console.log("e", e);
+        managerWin.webContents.send("aliases","Error:" +JSON.stringify(e));
+      });
+    }
+    resolve();
+  });
 }
