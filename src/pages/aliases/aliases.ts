@@ -1,9 +1,9 @@
 import { Component, NgZone } from '@angular/core';
 import { ElectronService } from 'ngx-electron';
-
 import { NavController } from 'ionic-angular';
+import { reorderArray } from 'ionic-angular';
 
-// declare var electron : any;
+
 
 @Component({
   selector: 'page-aliases',
@@ -24,6 +24,11 @@ export class Aliases {
         console.log("this.aliases", this.aliases);
       });
     });
+  }
+
+  reorderItems(indexes) {
+    console.log("indexes", indexes);
+    this.aliases = reorderArray(this.aliases, indexes);
   }
 
 }

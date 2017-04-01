@@ -10,10 +10,10 @@
 <ion-content padding>
   <h3>Aliases</h3>
 
-  <ion-grid>
-	  <ion-row><ion-col col-3>Alias</ion-col><ion-col>Username</ion-col></ion-row>
-	  <ion-row *ngFor="let a of aliases">
-	    <ion-col col-3>{{ a.alias }}</ion-col><ion-col>{{ a.value }}</ion-col>
-	  </ion-row>
-	</ion-grid>
+  <ion-list>
+    <ion-list-header><span class="alias">Alias</span><span class="username">Username</span></ion-list-header>
+    <ion-item-group reorder="true" (ionItemReorder)="$event.applyTo(aliases)">
+      <ion-item *ngFor="let a of aliases"><ion-label><span class="alias">{{ a.alias }}</span><span class="username">{{ a.value }}</span></ion-label><ion-toggle checked="false"></ion-toggle></ion-item>
+    </ion-item-group>
+  </ion-list>
 </ion-content>

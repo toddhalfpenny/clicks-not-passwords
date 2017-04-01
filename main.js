@@ -76,7 +76,8 @@ function launchManager() {
     })
     // Note: ionicMode=wp is to make it look not like Material design - maybe
     //  we want this, maybe we don't.
-    managerWin.loadURL(`file://${__dirname}/www/index.html?ionicMode=wp`)
+    // managerWin.loadURL(`file://${__dirname}/www/index.html?ionicMode=wp`)
+    managerWin.loadURL(`file://${__dirname}/www/index.html`)
     managerWin.webContents.openDevTools();
 }
 
