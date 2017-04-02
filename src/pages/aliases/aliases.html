@@ -12,8 +12,9 @@
 
   <ion-list>
     <ion-list-header><span class="alias">Alias</span><span class="username">Username</span></ion-list-header>
-    <ion-item-group reorder="true" (ionItemReorder)="$event.applyTo(aliases)">
-      <ion-item *ngFor="let a of aliases"><ion-label><span class="alias">{{ a.alias }}</span><span class="username">{{ a.value }}</span></ion-label><ion-toggle checked="false"></ion-toggle></ion-item>
+    <ion-item-group (ionItemReorder)="$event.applyTo(aliases)">
+      <ion-item *ngFor="let a of aliases"><ion-label><span class="alias">{{ a.alias }}</span><span class="username">{{ a.value }}</span></ion-label><ion-toggle checked="{{a.visible}}" (ionChange)="visibleToggled(a.alias, $event)"
+></ion-toggle></ion-item>
     </ion-item-group>
   </ion-list>
 </ion-content>

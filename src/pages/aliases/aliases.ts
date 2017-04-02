@@ -20,6 +20,7 @@ export class Aliases {
 
     this._electronService.ipcRenderer.on('aliases', (event, arg) => {
       this._ngZone.run(() => {
+        console.log("arg", arg);
         this.aliases = arg;
         console.log("this.aliases", this.aliases);
       });
@@ -29,6 +30,13 @@ export class Aliases {
   reorderItems(indexes) {
     console.log("indexes", indexes);
     this.aliases = reorderArray(this.aliases, indexes);
+  }
+
+  visibleToggled(alias, event){
+    this._electronService.ipcRenderer.send(
+       'aliases',
+       'update',
+       [{alias: alias, visible: event.checked}]);
   }
 
 }

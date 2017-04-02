@@ -2,15 +2,16 @@ var os = require('os');
 const electron = require('electron')
 const {app, Menu, MenuItem, Tray} = require('electron')
 const spawn = require('child_process').spawn;
+const storage = require('electron-json-storage');
 
 const {BrowserWindow} = require('electron')
 const {ipcMain} = require('electron')
 
-let tray = null
+let tray        = null
 let contextMenu = new Menu();
-let notifWin = null;
-
-let orgs = null
+let notifWin    = null;
+let managerWin  = null;
+let orgs        = null
 
 app.on('ready', () => {
 
@@ -38,14 +39,17 @@ app.on('ready', () => {
 
   refreshMenu()
 
-  ipcMain.on("aliases",function(err,arg){
-    console.log("Received message: "+arg);
-    switch (arg){
+  ipcMain.on("aliases",function(err,cmd, args){
+    console.log("Received message: ", cmd, args);
+    switch (cmd){
       case 'fetch':
         ipc_aliases_fetch();
         break;
+      case 'update':
+        ipc_aliases_update(args);
+        break;
       default:
-        managerWin.webContents.send("aliases","unknown command: " +arg);
+        managerWin.webContents.send("aliases","unknown command: " + cmd);
     }
   })
 
@@ -54,7 +58,8 @@ app.on('ready', () => {
 
 function showMenu(orgs){
   orgs.forEach(org => {
-    contextMenu.append(new MenuItem({label: org,  click(){ openOrg(org); }}));
+    console.log(org);
+    if (org.visible) contextMenu.append(new MenuItem({label: org.alias + " : " + org.value,  click(){ openOrg(org.alias); }}));
   });
   contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Refresh', click() { refreshMenu() }}));
@@ -63,29 +68,36 @@ function showMenu(orgs){
   contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Quit', click() { app.quit() }}));
   tray.setContextMenu(contextMenu)
-  // Show our notification via the hidden window
-  notifWin.webContents.send('notification', 'Aliases refreshed')
 }
 
 
 function launchManager() {
   console.log("launchManager");
-    // Our hidden notification window.
+  if (managerWin && !managerWin.isDestroyed()) {
+    managerWin.show();
+  } else {
     managerWin = new BrowserWindow({
-      useContentSize: true
+      width: 600,
+      height: 500
     })
     // Note: ionicMode=wp is to make it look not like Material design - maybe
     //  we want this, maybe we don't.
     // managerWin.loadURL(`file://${__dirname}/www/index.html?ionicMode=wp`)
-    managerWin.loadURL(`file://${__dirname}/www/index.html`)
-    managerWin.webContents.openDevTools();
+    managerWin.loadURL(`file://${__dirname}/www/index.html`, {show:false});
+    // managerWin.webContents.openDevTools();
+    managerWin.once('ready-to-show', () => {
+      managerWin.show()
+    })
+  }
 }
 
 
 function refreshMenu() {
   contextMenu = new Menu();
   getOrgAliases().then(orgs => {
-    showMenu(orgs)
+    showMenu(orgs);
+    // Show our notification via the hidden window
+    notifWin.webContents.send('notification', 'Aliases refreshed')
   }).catch(e => {
     console.log("e", e);
     contextMenu.append(new MenuItem({label: 'Quit', click() { app.quit() }}));
@@ -98,23 +110,54 @@ function refreshMenu() {
 
 function getOrgAliases(){
   return new Promise((resolve, reject) => {
+    // get Aliases from SFDX
     var ret = spawn('sfdx', ['force:alias:list', '--json']);
     ret.stdout.on('data', (data) => {
-      orgs = JSON.parse(data).results;
-      resolve(orgs.map(org => {
-        return org.alias + " : " + org.value;
-      }));
+      console.log("SFDX ouput", JSON.parse(data));
+      // Update our version of config and enrich the result from SFDX
+      updateAndEnrichOrgs(JSON.parse(data).results).then(res => {
+        console.log("updateAndEnrichOrgs res", res);
+        orgs = res;
+        resolve(res);
+      }).catch(e => {
+        console.log("e", e);
+      });
     });
   });
 }
 
 
-function openOrg(org){
+function updateAndEnrichOrgs(orgs){
+  return new Promise((resolve, reject) => {
+    storage.get('aliases', function(error, data) {
+      if (error) throw error;
+      // console.log("data", data);
+      let tmpAliases = (data.aliases) ? data.aliases : {};
+
+      let newAliases = []
+      let newAliasesForFile = {}
+      orgs.forEach(org => {
+        org.visible = (tmpAliases[org.alias]) ? tmpAliases[org.alias].visible : true;
+        org.order = (tmpAliases[org.alias]) ? tmpAliases[org.alias].order : 9999;
+        newAliasesForFile[org.alias] = org;
+        newAliases.push(org);
+      });
+      newAliases.sort(function (a, b) {
+        return a.order - b.order;
+      });
+      storage.set('aliases',  {aliases: newAliasesForFile}, function(error) {
+        if (error) throw error;
+      });
+      resolve(newAliases);
+    });
+  });
+}
+
+
+function openOrg(orgAlias){
   notifWin.webContents.send('notification', 'Your org will open in a new tab shortly')
-  let orgAlias = org.split(" : ")[0];
   var ret = spawn('sfdx', ['force:org:open', '-u', orgAlias]);
     ret.stdout.on('data', (data) => {
-      // console.log(`stdout: ${data}`);
     });
 
     ret.stderr.on('data', (data) => {
@@ -137,5 +180,25 @@ function ipc_aliases_fetch(){
       });
     }
     resolve();
+  });
+}
+
+
+function ipc_aliases_update(orgs){
+  console.log("ipc_aliases_update", orgs);
+  storage.get('aliases', function(error, data) {
+    if (error) throw error;
+    console.log("data.aliases", data.aliases);
+    let updatedOrgs = [];
+    orgs.forEach(org => {
+      data.aliases[org.alias].visible = org.visible;
+    });
+    // Update the Tray Icon menu
+    contextMenu = new Menu();
+    showMenu(Object.values(data.aliases));
+    // Write back to our conf file
+    storage.set('aliases',  data, function(error) {
+      if (error) throw error;
+    });
   });
 }
