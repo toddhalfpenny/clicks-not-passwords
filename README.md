@@ -32,8 +32,13 @@ npm run dist
 
 ## Roadmap
 
-* Alias management (listing, addition, updating, hiding)
+* Alias management (updating, further info)
 * Error reporting ([Crash reporting to remote server](https://electron.atom.io/docs/api/crash-reporter/))
 * Settings
   * Error reporting on/off
   * Notifications on/off
+
+
+## Dev
+
+The project is using Ionic (v2) for it's GUI (it's the nuts, thanks all) and this is all in the `src` dir... it's TypeScript, and I'm new to it, so please be gentle. When in the dir you can run `ionic serve` to spin up the webpack tasks for SCSS processing, TS hinting and building etc.

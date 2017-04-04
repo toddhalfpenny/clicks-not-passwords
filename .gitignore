@@ -1,4 +1,10 @@
-node_modules
-dist
+node_modules/
+
+# Electron Builder output
+dist/
+
+# Ionic Output
+www/
 
 nohup.out
+npm-debug.log
