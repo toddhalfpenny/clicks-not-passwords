@@ -2,13 +2,16 @@ var os = require('os');
 const electron = require('electron')
 const {app, Menu, MenuItem, Tray} = require('electron')
 const spawn = require('child_process').spawn;
+const storage = require('electron-json-storage');
 
 const {BrowserWindow} = require('electron')
 const {ipcMain} = require('electron')
 
-let tray = null
+let tray        = null
 let contextMenu = new Menu();
-let notifWin = null;
+let notifWin    = null;
+let managerWin  = null;
+let orgs        = null
 
 app.on('ready', () => {
 
@@ -35,27 +38,68 @@ app.on('ready', () => {
   tray.setToolTip('Clicks not passwords.')
 
   refreshMenu()
+
+  ipcMain.on("aliases",function(err,cmd, args){
+    // console.log("Received message: ", cmd, args);
+    switch (cmd){
+      case 'fetch':
+        ipc_aliases_fetch();
+        break;
+      case 'update':
+        ipc_aliases_update(args);
+        break;
+      case 'add':
+        ipc_aliases_add(args);
+        break;
+      default:
+        managerWin.webContents.send("aliases","unknown command: " + cmd);
+    }
+  })
+
 }) // end app.on('ready')
 
 
 function showMenu(orgs){
   orgs.forEach(org => {
-    contextMenu.append(new MenuItem({label: org,  click(){ openOrg(org); }}));
+    // console.log(org);
+    if (org.visible) contextMenu.append(new MenuItem({label: org.alias + " : " + org.value,  click(){ openOrg(org.alias); }}));
   });
   contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Refresh', click() { refreshMenu() }}));
   contextMenu.append(new MenuItem({type: 'separator'}));
+  contextMenu.append(new MenuItem({label: 'Manage', click() { launchManager() }}));
+  contextMenu.append(new MenuItem({type: 'separator'}));
   contextMenu.append(new MenuItem({label: 'Quit', click() { app.quit() }}));
   tray.setContextMenu(contextMenu)
-  // Show our notification via the hidden window
-  notifWin.webContents.send('notification', 'Aliases refreshed')
+}
+
+
+function launchManager() {
+  if (managerWin && !managerWin.isDestroyed()) {
+    managerWin.show();
+  } else {
+    managerWin = new BrowserWindow({
+      width: 700,
+      height: 600
+    })
+    // Note: ionicMode=wp is to make it look not like Material design - maybe
+    //  we want this, maybe we don't.
+    // managerWin.loadURL(`file://${__dirname}/www/index.html?ionicMode=wp`)
+    managerWin.loadURL(`file://${__dirname}/www/index.html`, {show:false});
+    // managerWin.webContents.openDevTools();
+    managerWin.once('ready-to-show', () => {
+      managerWin.show()
+    })
+  }
 }
 
 
 function refreshMenu() {
   contextMenu = new Menu();
   getOrgAliases().then(orgs => {
-    showMenu(orgs)
+    showMenu(orgs);
+    // Show our notification via the hidden window
+    notifWin.webContents.send('notification', 'Aliases refreshed')
   }).catch(e => {
     console.log("e", e);
     contextMenu.append(new MenuItem({label: 'Quit', click() { app.quit() }}));
@@ -68,26 +112,131 @@ function refreshMenu() {
 
 function getOrgAliases(){
   return new Promise((resolve, reject) => {
+    // get Aliases from SFDX
     var ret = spawn('sfdx', ['force:alias:list', '--json']);
     ret.stdout.on('data', (data) => {
-      resolve(JSON.parse(data).results.map(org => {
-        return org.alias + " : " + org.value;
-      }));
+      // console.log("SFDX ouput", JSON.parse(data));
+      // Update our version of config and enrich the result from SFDX
+      updateAndEnrichOrgs(JSON.parse(data).results).then(res => {
+        orgs = res;
+        resolve(res);
+      }).catch(e => {
+        console.log("e", e);
+      });
     });
   });
 }
 
 
-function openOrg(org){
+function updateAndEnrichOrgs(orgs){
+  return new Promise((resolve, reject) => {
+    storage.get('aliases', function(error, data) {
+      if (error) throw error;
+      // console.log("data", data);
+      let tmpAliases = (data.aliases) ? data.aliases : {};
+
+      let newAliases = []
+      let newAliasesForFile = {}
+      orgs.forEach(org => {
+        org.visible = (tmpAliases[org.alias]) ? tmpAliases[org.alias].visible : true;
+        org.order = (tmpAliases[org.alias]) ? tmpAliases[org.alias].order : 9999;
+        newAliasesForFile[org.alias] = org;
+        newAliases.push(org);
+      });
+      newAliases.sort(function (a, b) {
+        return a.order - b.order;
+      });
+      storage.set('aliases',  {aliases: newAliasesForFile}, function(error) {
+        if (error) throw error;
+      });
+      resolve(newAliases);
+    });
+  });
+}
+
+
+function openOrg(orgAlias){
   notifWin.webContents.send('notification', 'Your org will open in a new tab shortly')
-  let orgAlias = org.split(" : ")[0];
   var ret = spawn('sfdx', ['force:org:open', '-u', orgAlias]);
     ret.stdout.on('data', (data) => {
-      // console.log(`stdout: ${data}`);
     });
 
     ret.stderr.on('data', (data) => {
       console.error(`stderr: ${data}`);
       notifWin.webContents.send('notification', 'Oh dear, something went wrong :(\n' + data)
+    });
+}
+
+
+function ipc_aliases_fetch(){
+  return new Promise((resolve, reject) => {
+    if (orgs) {
+      managerWin.webContents.send("aliases",orgs);
+    } else {
+      getOrgAliases().then(x => {
+        managerWin.webContents.send("aliases",x);
+      }).catch(e => {
+        console.log("e", e);
+        managerWin.webContents.send("aliases","Error:" +JSON.stringify(e));
+      });
+    }
+    resolve();
+  });
+}
+
+
+function ipc_aliases_update(orgs){
+  storage.get('aliases', function(error, data) {
+    if (error) throw error;
+    orgs.forEach(org => {
+      data.aliases[org.alias].visible = org.visible;
+      if (typeof(org.order) !== "undefined") data.aliases[org.alias].order = org.order;
+    });
+    let updatedOrgs = Object.values(data.aliases);
+    updatedOrgs.sort(function (a, b) {
+      return a.order - b.order;
+    });
+    // Update the Tray Icon menu
+    contextMenu = new Menu();
+    showMenu(updatedOrgs);
+    // Write back to our conf file
+    storage.set('aliases',  data, function(error) {
+      if (error) throw error;
+    });
+  });
+}
+
+
+function ipc_aliases_add(alias){
+  // Setup the alias itself
+  const exec = require('child_process').exec;
+    exec('sfdx force:alias:set ' + alias.alias + '=' + alias.value
+      , (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return;
+      }
+      console.log(`stderr: ${stderr}`);
+      exec('sfdx force:auth:web:login -a ' + alias.alias + ' -r ' + alias.endpoint
+        , (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stderr: ${stderr}`);
+        // All good output is something like this for stdout, so we use this
+        // ----
+        // Successfully authorized todd@mobilecaddy.net with org id 00Db0000000dRGREA2
+        // You may now close the browser
+        // ----
+        if (stdout.includes("Successfully")) {
+          getOrgAliases().then(x => {
+            refreshMenu();
+            managerWin.webContents.send("aliases","add_ok");
+          });
+        } else {
+          managerWin.webContents.send("aliases","add_fail");
+        }
+      });
     });
 }
