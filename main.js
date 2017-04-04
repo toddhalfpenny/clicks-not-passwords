@@ -40,13 +40,16 @@ app.on('ready', () => {
   refreshMenu()
 
   ipcMain.on("aliases",function(err,cmd, args){
-    console.log("Received message: ", cmd, args);
+    // console.log("Received message: ", cmd, args);
     switch (cmd){
       case 'fetch':
         ipc_aliases_fetch();
         break;
       case 'update':
         ipc_aliases_update(args);
+        break;
+      case 'add':
+        ipc_aliases_add(args);
         break;
       default:
         managerWin.webContents.send("aliases","unknown command: " + cmd);
@@ -58,7 +61,7 @@ app.on('ready', () => {
 
 function showMenu(orgs){
   orgs.forEach(org => {
-    console.log(org);
+    // console.log(org);
     if (org.visible) contextMenu.append(new MenuItem({label: org.alias + " : " + org.value,  click(){ openOrg(org.alias); }}));
   });
   contextMenu.append(new MenuItem({type: 'separator'}));
@@ -72,13 +75,12 @@ function showMenu(orgs){
 
 
 function launchManager() {
-  console.log("launchManager");
   if (managerWin && !managerWin.isDestroyed()) {
     managerWin.show();
   } else {
     managerWin = new BrowserWindow({
-      width: 600,
-      height: 500
+      width: 700,
+      height: 600
     })
     // Note: ionicMode=wp is to make it look not like Material design - maybe
     //  we want this, maybe we don't.
@@ -113,10 +115,9 @@ function getOrgAliases(){
     // get Aliases from SFDX
     var ret = spawn('sfdx', ['force:alias:list', '--json']);
     ret.stdout.on('data', (data) => {
-      console.log("SFDX ouput", JSON.parse(data));
+      // console.log("SFDX ouput", JSON.parse(data));
       // Update our version of config and enrich the result from SFDX
       updateAndEnrichOrgs(JSON.parse(data).results).then(res => {
-        console.log("updateAndEnrichOrgs res", res);
         orgs = res;
         resolve(res);
       }).catch(e => {
@@ -173,7 +174,7 @@ function ipc_aliases_fetch(){
       managerWin.webContents.send("aliases",orgs);
     } else {
       getOrgAliases().then(x => {
-        managerWin.webContents.send("aliases",orgs);
+        managerWin.webContents.send("aliases",x);
       }).catch(e => {
         console.log("e", e);
         managerWin.webContents.send("aliases","Error:" +JSON.stringify(e));
@@ -185,20 +186,57 @@ function ipc_aliases_fetch(){
 
 
 function ipc_aliases_update(orgs){
-  console.log("ipc_aliases_update", orgs);
   storage.get('aliases', function(error, data) {
     if (error) throw error;
-    console.log("data.aliases", data.aliases);
-    let updatedOrgs = [];
     orgs.forEach(org => {
       data.aliases[org.alias].visible = org.visible;
+      if (typeof(org.order) !== "undefined") data.aliases[org.alias].order = org.order;
+    });
+    let updatedOrgs = Object.values(data.aliases);
+    updatedOrgs.sort(function (a, b) {
+      return a.order - b.order;
     });
     // Update the Tray Icon menu
     contextMenu = new Menu();
-    showMenu(Object.values(data.aliases));
+    showMenu(updatedOrgs);
     // Write back to our conf file
     storage.set('aliases',  data, function(error) {
       if (error) throw error;
     });
   });
+}
+
+
+function ipc_aliases_add(alias){
+  // Setup the alias itself
+  const exec = require('child_process').exec;
+    exec('sfdx force:alias:set ' + alias.alias + '=' + alias.value
+      , (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return;
+      }
+      console.log(`stderr: ${stderr}`);
+      exec('sfdx force:auth:web:login -a ' + alias.alias + ' -r ' + alias.endpoint
+        , (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`);
+          return;
+        }
+        console.log(`stderr: ${stderr}`);
+        // All good output is something like this for stdout, so we use this
+        // ----
+        // Successfully authorized todd@mobilecaddy.net with org id 00Db0000000dRGREA2
+        // You may now close the browser
+        // ----
+        if (stdout.includes("Successfully")) {
+          getOrgAliases().then(x => {
+            refreshMenu();
+            managerWin.webContents.send("aliases","add_ok");
+          });
+        } else {
+          managerWin.webContents.send("aliases","add_fail");
+        }
+      });
+    });
 }

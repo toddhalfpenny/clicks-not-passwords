@@ -1,3 +1,22 @@
+### 0.0.4
+
+
+#### Bug Fixes
+
+* NONE
+
+#### Features
+
+* Alias ordering
+* Alias visibility setting
+* Alias addition
+
+#### Breaking Changes
+
+* NONE
+
+
+
 ### 0.0.3
 
 

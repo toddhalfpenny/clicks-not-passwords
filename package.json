@@ -1,7 +1,7 @@
 {
   "name": "clicks-not-passwords",
   "productName": "Clicks not Passwords",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Clicks not Passwords - Salesforce Org Launcher",
   "main": "main.js",
   "scripts": {

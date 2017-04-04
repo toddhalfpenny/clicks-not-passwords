@@ -1,19 +1,25 @@
 <ion-header>
-  <ion-navbar>
-    <button ion-button menuToggle>
-      <ion-icon name="menu"></ion-icon>
-    </button>
-    <ion-title>Clicks not Passwords</ion-title>
-  </ion-navbar>
+  <ion-toolbar>
+    <ion-buttons start class="left">
+      <button ion-button menuToggle>
+        <ion-icon name="menu"></ion-icon>
+      </button>
+    </ion-buttons>
+
+    <ion-title>Aliases : Clicks not Passwords</ion-title>
+
+    <ion-buttons end>
+      <button id="addAlias" ion-button outline icon-right (click)="openAddAliasPopup()">Add Alias<ion-icon name="add"></ion-icon></button>
+    </ion-buttons>
+
+  </ion-toolbar>
 </ion-header>
 
 <ion-content padding>
-  <h3>Aliases</h3>
-
   <ion-list>
-    <ion-list-header><span class="alias">Alias</span><span class="username">Username</span></ion-list-header>
-    <ion-item-group (ionItemReorder)="$event.applyTo(aliases)">
-      <ion-item *ngFor="let a of aliases"><ion-label><span class="alias">{{ a.alias }}</span><span class="username">{{ a.value }}</span></ion-label><ion-toggle checked="{{a.visible}}" (ionChange)="visibleToggled(a.alias, $event)"
+    <ion-list-header><span class="alias">Alias</span><span class="username">Username</span><span class="visible">Visible</span></ion-list-header>
+    <ion-item-group reorder="true" (ionItemReorder)="reorderItems($event)">
+      <ion-item *ngFor="let a of aliases; let i=index"><ion-label><span class="alias visible-{{a.visible}}">{{ a.alias }}</span><span class="username visible-{{a.visible}}">{{ a.value }}</span></ion-label><ion-toggle checked="{{a.visible}}" (ionChange)="visibleToggled(a.alias, i, $event)"
 ></ion-toggle></ion-item>
     </ion-item-group>
   </ion-list>
