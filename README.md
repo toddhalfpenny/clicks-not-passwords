@@ -2,6 +2,14 @@
 
 - Download or clone
 - `cd clicks-not-passwords`
+- Install Ionic
+```
+npm install -g ionic
+```
+- Install the deps
+```
+npm install
+```
 - Run the build stuff (webpack black magic)
 ```
 ionic serve
