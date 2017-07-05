@@ -117,7 +117,7 @@ function getOrgAliases(){
     ret.stdout.on('data', (data) => {
       // console.log("SFDX ouput", JSON.parse(data));
       // Update our version of config and enrich the result from SFDX
-      updateAndEnrichOrgs(JSON.parse(data).results).then(res => {
+      updateAndEnrichOrgs(JSON.parse(data).result).then(res => {
         orgs = res;
         resolve(res);
       }).catch(e => {
